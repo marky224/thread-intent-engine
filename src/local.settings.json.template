@@ -1,0 +1,19 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "FUNCTIONS_EXTENSION_VERSION": "~4",
+
+    "KEY_VAULT_NAME": "",
+    "STORAGE_ACCOUNT_NAME": "",
+    "IDEMPOTENCY_TTL_SECONDS": "3600",
+
+    "LOCAL_DEV": "true",
+    "LOCAL_APP_CLIENT_ID": "",
+    "LOCAL_APP_CLIENT_SECRET": "",
+    "LOCAL_TENANT_ID": "",
+    "LOCAL_NOTIFICATION_EMAIL": "",
+    "LOCAL_NOTIFICATION_MAILBOX": ""
+  }
+}

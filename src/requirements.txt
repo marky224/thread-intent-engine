@@ -1,0 +1,22 @@
+# Azure Functions runtime
+azure-functions>=1.17.0
+
+# Microsoft Graph SDK and authentication
+msal>=1.28.0
+requests>=2.31.0
+
+# Azure Key Vault secrets
+azure-identity>=1.16.0
+azure-keyvault-secrets>=4.8.0
+
+# Azure Table Storage (idempotency)
+azure-data-tables>=12.5.0
+
+# Azure Automation (trigger runbooks)
+azure-mgmt-automation>=1.1.0
+
+# Payload validation
+pydantic>=2.6.0
+
+# Application Insights
+opencensus-ext-azure>=1.1.13
