@@ -47,7 +47,7 @@ Thread Magic Agent
 - Python 3.11+
 - Azure Functions Core Tools v4 (`func`)
 - An Azure AD multi-tenant app registration with required Graph permissions
-- A test Microsoft 365 tenant
+- A Microsoft 365 tenant
 
 ## Quick Start
 
