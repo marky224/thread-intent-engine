@@ -30,16 +30,16 @@ Thread Magic Agent
 
 ## Supported Intents
 
-| Intent | Method | Priority |
-|--------|--------|----------|
-| Password Reset | Graph API | P2 (Demo) |
-| Add User to Group | Graph API | P2 (Demo) |
-| License Assignment | Graph API | P2 (Demo) |
-| Remove User from Group | Graph API | P4 |
-| MFA Reset | Graph API | P4 |
-| New User Creation | Graph API (multi-step) | P4 |
-| User Offboarding | Graph API + Runbook | P4 |
-| Shared Mailbox Permission | EXO Runbook | P4 |
+| Intent | Method |
+|--------|--------|
+| Password Reset | Graph API |
+| Add User to Group | Graph API |
+| License Assignment | Graph API |
+| Remove User from Group | Graph API |
+| MFA Reset | Graph API |
+| New User Creation | Graph API (multi-step) |
+| User Offboarding | Graph API + Runbook |
+| Shared Mailbox Permission | EXO Runbook |
 
 ## Prerequisites
 
