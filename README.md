@@ -174,7 +174,7 @@ thread-intent-engine/
 
 ## Security
 
-- **IP whitelisting**: Function App only accepts traffic from Thread's 6 static IPs
+- **IP whitelisting**: Function App only accepts traffic from Thread's static IPs
 - **Key Vault**: All secrets accessed via managed identity (never in app settings)
 - **HTTPS only**: Enforced by Azure Functions
 - **Idempotency**: Prevents duplicate operations from webhook retries
