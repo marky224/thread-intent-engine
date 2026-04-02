@@ -12,9 +12,6 @@ azure-keyvault-secrets>=4.8.0
 # Azure Table Storage (idempotency)
 azure-data-tables>=12.5.0
 
-# Azure Automation (trigger runbooks)
-azure-mgmt-automation>=1.1.0
-
 # Payload validation
 pydantic>=2.6.0
 
