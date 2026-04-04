@@ -37,95 +37,152 @@ Thread Magic Agent
 | License Assignment | Graph API |
 | Remove User from Group | Graph API |
 | MFA Reset | Graph API |
-| New User Creation | Graph API (multi-step) |
+| New User Creation | Graph API |
 | User Offboarding | Graph API + Runbook |
 | Shared Mailbox Permission | EXO Runbook |
 
 ## Prerequisites
 
-- Azure CLI (`az`) installed and logged in
 - Python 3.11+
-- Azure Functions Core Tools v4 (`func`)
-- An Azure AD multi-tenant app registration with required Graph permissions
 - A Microsoft 365 tenant
+- Azure Functions Core Tools v4 (`func`)
+- An Azure AD multi-tenant app registration with required permissions
+- Azure CLI (`az`)
+- Azurite (local storage emulator)
 
 ## Quick Start
 
-### 1. Create the App Registration
-
-In the Azure Portal → Entra ID → App registrations → New registration:
-- Name: `Thread Intent Automation Engine`
-- Supported account types: **Accounts in any organizational directory** (multi-tenant)
-- Add a client secret and note the **Client ID** and **Client Secret**
-
-Add these **Application** (not delegated) permissions:
-- `User.ReadWrite.All`
-- `Directory.ReadWrite.All`
-- `GroupMember.ReadWrite.All`
-- `UserAuthenticationMethod.ReadWrite.All`
-- `MailboxSettings.ReadWrite`
-- `Mail.Send`
-- `Exchange.ManageAsApp`
-
-### 2. Deploy to Azure
-
+### 1. Clone and install
+ 
 ```bash
-chmod +x scripts/deploy.sh scripts/package.sh
-
-./scripts/deploy.sh \
-  --resource-group rg-thread-automation \
-  --app-name contoso-threadauto \
-  --notification-email admin@contoso.com \
-  --client-id <YOUR-APP-CLIENT-ID> \
-  --client-secret <YOUR-APP-CLIENT-SECRET> \
-  --deploy-code
+git clone https://github.com/marky224/thread-intent-engine.git
+cd thread-intent-engine/src
+python -m venv .venv
+.venv\Scripts\activate      # Windows
+# source .venv/bin/activate  # macOS/Linux
+pip install -r requirements.txt
 ```
 
-The script outputs:
-- **Webhook URL**: Give this to the MSP for Thread intent configuration
-- **Admin Consent URL**: Customer clicks this to grant Graph permissions
-
-### 3. Grant Admin Consent
-
-Click the Admin Consent URL from the deployment output. This grants the app registration's Graph API permissions within the customer's tenant.
-
-### 4. Test the Webhook
-
-```bash
-curl -X POST 'https://contoso-threadauto-func.azurewebsites.net/api/intent' \
-  -H 'Content-Type: application/json' \
-  -d '{
-    "intent_name": "Password Reset",
-    "intent_fields": {
-      "User Email": "testuser@contoso.onmicrosoft.com",
-      "Force Change on Login": "Yes"
-    },
-    "meta_data": {
-      "ticket_id": 9999,
-      "contact_name": "Test User",
-      "contact_email": "test@contoso.com",
-      "company_name": "Contoso"
-    }
-  }'
+### 2. Create the App Registration
+ 
+In the Azure Portal → **Microsoft Entra ID** → **App registrations** → **New registration**:
+ 
+| Setting | Value |
+|---------|-------|
+| Name | `Thread Intent Automation Engine` |
+| Supported account types | **Multiple Entra ID tenants** (multi-tenant) |
+| Redirect URI | Leave blank |
+ 
+Create a **client secret** (Certificates & secrets → New client secret → 12 months). Copy the **Value** immediately — it's only shown once.
+ 
+### 3. Add API Permissions
+ 
+Add these **Application** permissions (not Delegated) under **API permissions** → **Microsoft Graph**:
+ 
+```
+User.ReadWrite.All
+Directory.ReadWrite.All
+GroupMember.ReadWrite.All
+UserAuthenticationMethod.ReadWrite.All
+MailboxSettings.ReadWrite
+Mail.Send
 ```
 
-### 5. Local Development
+Then add one more: **APIs my organization uses** → **Office 365 Exchange Online** → **Application permissions** → `Exchange.ManageAsApp`
+ 
+Click **Grant admin consent for [your tenant]** — all permissions should show green checkmarks.
 
+### 4. Assign the Helpdesk Administrator Role
+ 
+The app registration's service principal needs the **Helpdesk Administrator** directory role to reset user (non-admin) passwords. This is a directory-level role assignment, not an API permission.
+ 
+1. Go to **Microsoft Entra ID** → **Roles and administrators**
+2. Search for **Helpdesk Administrator** → click on the role name
+3. Click **+ Add assignments**
+4. Search for `Thread Intent Automation Engine` → select it → click **Add**
+ 
+> **Why this is needed:** The `User.ReadWrite.All` permission allows updating most user properties, but `passwordProfile` is a privileged operation that requires a directory role. Helpdesk Administrator grants password reset for non-admin users, which is the correct security boundary — the app cannot reset passwords for Global Admins or other privileged roles.
+
+### 5. Configure local settings
+ 
 ```bash
 cd src
 cp local.settings.json.template local.settings.json
-# Edit local.settings.json with your app registration credentials
+```
+ 
+Edit `local.settings.json` with your credentials:
+ 
+```json
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "python",
+    "FUNCTIONS_EXTENSION_VERSION": "~4",
+    "KEY_VAULT_NAME": "",
+    "STORAGE_ACCOUNT_NAME": "",
+    "IDEMPOTENCY_TTL_SECONDS": "3600",
+    "LOCAL_DEV": "true",
+    "LOCAL_APP_CLIENT_ID": "<your-app-client-id>",
+    "LOCAL_APP_CLIENT_SECRET": "<your-client-secret-value>",
+    "LOCAL_TENANT_ID": "<your-tenant-id>",
+    "LOCAL_NOTIFICATION_EMAIL": "<your-admin-upn>",
+    "LOCAL_NOTIFICATION_MAILBOX": "<your-admin-upn>"
+  }
+}
+```
 
-pip install -r requirements.txt
+### 6. Run locally
+ 
+Start Azurite (separate terminal):
+```bash
+azurite --silent --location C:\temp\azurite
+```
+ 
+Create the idempotency table (separate terminal):
+```bash
+python -c "from azure.data.tables import TableServiceClient; client = TableServiceClient.from_connection_string('UseDevelopmentStorage=true'); client.create_table_if_not_exists('idempotency'); print('Table created')"
+```
+ 
+Start the Function App (separate terminal):
+```bash
+cd src
 func start
 ```
 
-Test locally:
-```bash
-curl -X POST http://localhost:7071/api/intent \
-  -H 'Content-Type: application/json' \
-  -d '{ ... }'
+### 7. Test
+ 
+```powershell
+$body = @{
+    intent_name = "Password Reset"
+    intent_fields = @{
+        "User Email" = "testuser@yourtenant.onmicrosoft.com"
+        "Force Change on Login" = "Yes"
+    }
+    meta_data = @{
+        ticket_id = 1001
+        contact_name = "Test Admin"
+        contact_email = "admin@yourtenant.onmicrosoft.com"
+        company_name = "Test Company"
+    }
+} | ConvertTo-Json -Depth 3
+ 
+Invoke-RestMethod -Uri http://localhost:7071/api/intent -Method POST -ContentType "application/json" -Body $body
 ```
+
+## Deploy to Azure
+ 
+```bash
+./scripts/deploy.sh \
+  --resource-group rg-thread-automation \
+  --app-name yourcompany-threadauto \
+  --notification-email admin@yourdomain.com \
+  --client-id <APP-CLIENT-ID> \
+  --client-secret <APP-CLIENT-SECRET> \
+  --deploy-code
+```
+
+The script deploys all infrastructure (Function App + Storage + Key Vault + App Insights + Automation Account), uploads PowerShell runbooks, and outputs the webhook URL and admin consent link.
 
 ## Project Structure
 
@@ -170,15 +227,9 @@ thread-intent-engine/
 └── scripts/
     ├── deploy.sh                 # Full deployment script
     └── package.sh                # ZIP packaging for RUN_FROM_PACKAGE
+└── docs/
+    └── Thread_Intent_Engine_Installation_Guide.docx
 ```
-
-## Security
-
-- **IP whitelisting**: Function App only accepts traffic from Thread's static IPs
-- **Key Vault**: All secrets accessed via managed identity (never in app settings)
-- **HTTPS only**: Enforced by Azure Functions
-- **Idempotency**: Prevents duplicate operations from webhook retries
-- **Customer-owned**: All resources visible in the customer's Azure portal
 
 ## Webhook Payload Format
 
@@ -187,8 +238,7 @@ thread-intent-engine/
   "intent_name": "Add User to Group",
   "intent_fields": {
     "User Email": "jane.doe@contoso.com",
-    "Group Name": "Marketing Team",
-    "Group Type": "Microsoft 365"
+    "Group Name": "Marketing Team"
   },
   "meta_data": {
     "ticket_id": 5678,
@@ -198,6 +248,39 @@ thread-intent-engine/
   }
 }
 ```
+
+## Observability
+ 
+All events are logged to Application Insights with structured `custom_dimensions` for KQL queryability:
+ 
+| Event | Fields |
+|-------|--------|
+| `webhook_received` | intent_name, ticket_id, company_name, raw_payload, raw_headers |
+| `intent_result` | intent_name, ticket_id, status, duration_ms, result_summary or error_message |
+| `idempotency_skip` | intent_name, ticket_id, dedup_key |
+| `notification_failure` | intent_name, ticket_id, notification_error |
+
+## Security
+
+- **IP whitelisting**: Function App only accepts traffic from Thread's static IPs
+- **Key Vault**: All secrets accessed via managed identity (never in app settings)
+- **HTTPS only**: Enforced by Azure Functions
+- **Idempotency**: Prevents duplicate operations from webhook retries
+- **Helpdesk Administrator scope** — App can reset passwords for standard users only, not admin accounts
+- **Customer-owned**: All resources visible in the customer's Azure portal
+
+## Required Permissions Summary
+ 
+**Graph API Permissions (Application):**
+- `User.ReadWrite.All`, `Directory.ReadWrite.All`, `GroupMember.ReadWrite.All`
+- `UserAuthenticationMethod.ReadWrite.All`, `MailboxSettings.ReadWrite`, `Mail.Send`
+ 
+**Exchange Online Permission (Application):**
+- `Exchange.ManageAsApp`
+ 
+**Entra ID Directory Roles:**
+- **Helpdesk Administrator** — on the app registration's service principal (required for password reset)
+- **Exchange Administrator** — on the Automation Account's managed identity (required for EXO runbooks (Shared Mailbox Functionality))
 
 ## Cost
 
