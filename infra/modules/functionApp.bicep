@@ -92,24 +92,57 @@ resource functionApp 'Microsoft.Web/sites@2023-12-01' = {
         }
       ]
       // IP access restrictions — only Thread's outbound IPs + Azure portal
-      ipSecurityRestrictions: concat(
-        [for (ip, i) in threadIpAddresses: {
-          ipAddress: '${ip}/32'
+      ipSecurityRestrictions: [
+        {
+          ipAddress: '${threadIpAddresses[0]}/32'
           action: 'Allow'
-          priority: 100 + i
-          name: 'Thread-IP-${i + 1}'
-          description: 'Thread outbound IP ${ip}'
-        }]
-        , [
-          {
-            ipAddress: 'Any'
-            action: 'Deny'
-            priority: 2147483647
-            name: 'Deny-All'
-            description: 'Deny all other traffic'
-          }
-        ]
-      )
+          priority: 100
+          name: 'Thread-IP-1'
+          description: 'Thread outbound IP ${threadIpAddresses[0]}'
+        }
+        {
+          ipAddress: '${threadIpAddresses[1]}/32'
+          action: 'Allow'
+          priority: 101
+          name: 'Thread-IP-2'
+          description: 'Thread outbound IP ${threadIpAddresses[1]}'
+        }
+        {
+          ipAddress: '${threadIpAddresses[2]}/32'
+          action: 'Allow'
+          priority: 102
+          name: 'Thread-IP-3'
+          description: 'Thread outbound IP ${threadIpAddresses[2]}'
+        }
+        {
+          ipAddress: '${threadIpAddresses[3]}/32'
+          action: 'Allow'
+          priority: 103
+          name: 'Thread-IP-4'
+          description: 'Thread outbound IP ${threadIpAddresses[3]}'
+        }
+        {
+          ipAddress: '${threadIpAddresses[4]}/32'
+          action: 'Allow'
+          priority: 104
+          name: 'Thread-IP-5'
+          description: 'Thread outbound IP ${threadIpAddresses[4]}'
+        }
+        {
+          ipAddress: '${threadIpAddresses[5]}/32'
+          action: 'Allow'
+          priority: 105
+          name: 'Thread-IP-6'
+          description: 'Thread outbound IP ${threadIpAddresses[5]}'
+        }
+        {
+          ipAddress: 'Any'
+          action: 'Deny'
+          priority: 2147483647
+          name: 'Deny-All'
+          description: 'Deny all other traffic'
+        }
+      ]
       ipSecurityRestrictionsDefaultAction: 'Deny'
       scmIpSecurityRestrictions: [
         {
