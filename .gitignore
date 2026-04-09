@@ -12,6 +12,7 @@ local.settings.json
 
 # Build artifacts
 dist/
+*.bak
 
 # IDE
 .vscode/
